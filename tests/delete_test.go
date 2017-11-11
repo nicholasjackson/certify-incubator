@@ -8,6 +8,12 @@ import (
 	"github.com/alexellis/faas/gateway/requests"
 )
 
+func delete(t *testing.T) {
+	t.Run("delete", func(t *testing.T) {
+		t.Run("Check it is possible to delete a function", basicDelete)
+	})
+}
+
 func basicDelete(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"

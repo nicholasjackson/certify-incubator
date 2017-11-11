@@ -9,6 +9,14 @@ import (
 	"github.com/alexellis/faas/gateway/requests"
 )
 
+func alerts(t *testing.T) {
+	t.Run("alerts", func(t *testing.T) {
+		t.Run("Scale alert scales function", scaleUpAlertScalesFunction)
+	})
+
+	cleanupDeployedFunctions()
+}
+
 func scaleUpAlertScalesFunction(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"

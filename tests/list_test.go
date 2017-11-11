@@ -6,6 +6,14 @@ import (
 	"github.com/alexellis/faas/gateway/requests"
 )
 
+func list(t *testing.T) {
+	t.Run("list", func(t *testing.T) {
+		t.Run("When two functions are deployed list should return two functions", when2FunctionsDeployedListReturns2Functions)
+	})
+
+	cleanupDeployedFunctions()
+}
+
 func when2FunctionsDeployedListReturns2Functions(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"

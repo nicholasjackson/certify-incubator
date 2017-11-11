@@ -10,6 +10,13 @@ import (
 	"github.com/alexellis/faas/gateway/requests"
 )
 
+func invoke(t *testing.T) {
+	t.Run("invoke", func(t *testing.T) {
+		t.Run("Invoke a function and check response", basicInvoke)
+	})
+	cleanupDeployedFunctions()
+}
+
 func basicInvoke(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"
