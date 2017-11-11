@@ -1,21 +1,10 @@
 package tests
 
 import (
-	"encoding/json"
-	"net/http"
-	"os"
 	"testing"
 
 	"github.com/alexellis/faas/gateway/requests"
 )
-
-func Test_List(t *testing.T) {
-	t.Run("group", func(t *testing.T) {
-		t.Run("Test_When2FunctionsDeployedListReturns2Functions", when2FunctionsDeployedListReturns2Functions)
-	})
-
-	cleanupDeployedFunctions()
-}
 
 func when2FunctionsDeployedListReturns2Functions(t *testing.T) {
 	envVars := map[string]string{}
@@ -44,29 +33,10 @@ func when2FunctionsDeployedListReturns2Functions(t *testing.T) {
 }
 
 func assertList(t *testing.T, count int) {
-	bytesOut, res, err := httpReq(os.Getenv("gateway_url")+"system/functions", "GET", nil)
-	if err != nil {
-		t.Log(err)
-		t.Fail()
-		return
-	}
+	fs := listFunctions(t)
 
-	if res.StatusCode != http.StatusOK {
-		t.Logf("got %d, wanted %d", res.StatusCode, http.StatusOK)
-		t.Fail()
-		return
-	}
-
-	functions := []requests.Function{}
-	err = json.Unmarshal(bytesOut, &functions)
-	if err != nil {
-		t.Log(err)
-		t.Fail()
-		return
-	}
-
-	if len(functions) != count {
-		t.Logf("List functions got: %s, want: %s", len(functions), count)
+	if len(fs) != count {
+		t.Logf("List functions got: %s, want: %s", len(fs), count)
 		t.Fail()
 	}
 }

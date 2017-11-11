@@ -8,7 +8,7 @@ import (
 	"github.com/alexellis/faas/gateway/requests"
 )
 
-func Test_Delete(t *testing.T) {
+func basicDelete(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"
 	deploy := requests.CreateFunctionRequest{

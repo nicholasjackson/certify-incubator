@@ -24,14 +24,6 @@ func Test_Pipeline(t *testing.T) {
 }
 */
 
-func Test_Deploy(t *testing.T) {
-	t.Run("group", func(t *testing.T) {
-		t.Run("Deploy function passing custom environment variables", passingCustomEnvVars)
-	})
-
-	cleanupDeployedFunctions()
-}
-
 func passingCustomEnvVars(t *testing.T) {
 	envVars := map[string]string{}
 	envVars["custom_env"] = "custom_env_value"

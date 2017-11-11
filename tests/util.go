@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"testing"
 
 	"github.com/alexellis/faas/gateway/requests"
 )
@@ -90,4 +91,29 @@ func cleanupDeployedFunctions() {
 	}
 
 	deployedFunctions = cleanupFailed
+}
+
+func listFunctions(t *testing.T) []requests.Function {
+	bytesOut, res, err := httpReq(os.Getenv("gateway_url")+"system/functions", "GET", nil)
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+		return nil
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Logf("got %d, wanted %d", res.StatusCode, http.StatusOK)
+		t.Fail()
+		return nil
+	}
+
+	fs := []requests.Function{}
+	err = json.Unmarshal(bytesOut, &fs)
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+		return nil
+	}
+
+	return fs
 }
