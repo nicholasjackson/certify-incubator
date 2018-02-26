@@ -1,12 +1,10 @@
 package tests
 
 import (
-	"bytes"
 	"net/http"
-	"os"
 	"testing"
 
-	"github.com/alexellis/faas/gateway/requests"
+	"github.com/openfaas/faas/gateway/requests"
 )
 
 func alerts(t *testing.T) {
@@ -36,13 +34,16 @@ func scaleUpAlertScalesFunction(t *testing.T) {
 }
 
 func sendScaleRequest(t *testing.T) {
-	_, r, err := httpReq(
-		os.Getenv("gateway_url")+"system/alert",
+	_, _, err := httpReqWithRetry(
+		"system/alert",
 		"POST",
-		bytes.NewBuffer([]byte(scalePayload)),
+		[]byte(scalePayload),
+		5,
+		100,
+		http.StatusOK,
 	)
 
-	if err != nil && r.StatusCode != http.StatusOK {
+	if err != nil {
 		t.Fatal(err)
 	}
 }

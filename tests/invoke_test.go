@@ -2,12 +2,10 @@ package tests
 
 import (
 	"net/http"
-	"os"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/alexellis/faas/gateway/requests"
+	"github.com/openfaas/faas/gateway/requests"
 )
 
 func invoke(t *testing.T) {
@@ -34,41 +32,22 @@ func basicInvoke(t *testing.T) {
 }
 
 func assertInvoke(t *testing.T, name string, expected string) {
-	attempts := 30 // i.e. 30x2s = 1m
-	delay := time.Millisecond * 2000
-	uri := os.Getenv("gateway_url") + "function/" + name
-	success := false
+	body, _, err := httpReqWithRetry(
+		"functions/"+name,
+		"POST",
+		[]byte{},
+		10,
+		100,
+		http.StatusOK,
+	)
 
-	for i := 0; i < attempts; i++ {
-		bytesOut, res, err := httpReq(uri, "POST", nil)
-
-		if err != nil {
-			t.Log(err.Error())
-			continue
-		}
-		if res.StatusCode != http.StatusOK {
-			t.Logf("[%d/%d] Bad response want: %d, got: %d", i+1, attempts, http.StatusOK, res.StatusCode)
-			t.Logf(uri)
-			if i == attempts-1 {
-				t.Logf("Failing after: %d attempts", attempts)
-			}
-			time.Sleep(delay)
-			continue
-		} else {
-			t.Logf("[%d/%d] Correct response: %d", i+1, attempts, res.StatusCode)
-		}
-
-		out := string(bytesOut)
-		if strings.Contains(out, expected) == false {
-			t.Logf("want: %s, got: %s", expected, out)
-		} else {
-			success = true
-		}
-
-		break
+	if err != nil {
+		t.Fatal(err)
+		return
 	}
 
-	if !success {
-		t.Fail()
+	out := string(body)
+	if strings.Contains(out, expected) == false {
+		t.Fatalf("want: %s, got: %s", expected, out)
 	}
 }

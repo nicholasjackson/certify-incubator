@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/alexellis/faas/gateway/requests"
+	"github.com/openfaas/faas/gateway/requests"
 )
 
 func list(t *testing.T) {
@@ -44,7 +44,7 @@ func assertList(t *testing.T, count int) {
 	fs := listFunctions(t)
 
 	if len(fs) != count {
-		t.Logf("List functions got: %s, want: %s", len(fs), count)
+		t.Logf("List functions got: %d, want: %d", len(fs), count)
 		t.Fail()
 	}
 }

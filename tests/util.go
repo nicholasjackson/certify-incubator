@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/alexellis/faas/gateway/requests"
+	"github.com/eapache/go-resiliency/retrier"
+	"github.com/openfaas/faas/gateway/requests"
+	"github.com/pkg/errors"
 )
 
 var deployedFunctions []string
@@ -23,6 +26,41 @@ func init() {
 func makeReader(input interface{}) *bytes.Buffer {
 	res, _ := json.Marshal(input)
 	return bytes.NewBuffer(res)
+}
+
+// httpReqWithRetry makes a http request n number of times until success code is matched or retry count exceeded
+func httpReqWithRetry(path, method string, payload []byte, retries, timeoutMS, okStatus int) ([]byte, *http.Response, error) {
+	r := retrier.New(
+		retrier.ConstantBackoff(retries, time.Duration(timeoutMS)*time.Millisecond),
+		nil,
+	)
+
+	var resp *http.Response
+	var body []byte
+	var errs error
+
+	err := r.Run(func() error {
+		var err error
+		body, resp, err = httpReq(
+			os.Getenv("gateway_url")+path,
+			method,
+			bytes.NewBuffer(payload),
+		)
+
+		if err != nil {
+			errs = errors.Wrap(errs, fmt.Sprintf("error executing request: %s", err))
+			return errs
+		}
+
+		if resp.StatusCode != okStatus {
+			errs = errors.Wrap(errs, fmt.Sprintf("expected status %d, got %d", okStatus, resp.StatusCode))
+			return errs
+		}
+
+		return nil
+	})
+
+	return body, resp, errors.Wrap(err, fmt.Sprintf("failed after %d attempts", retries))
 }
 
 func httpReq(url1, method string, reader io.Reader) ([]byte, *http.Response, error) {
