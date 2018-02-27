@@ -33,11 +33,11 @@ func basicInvoke(t *testing.T) {
 
 func assertInvoke(t *testing.T, name string, expected string) {
 	body, _, err := httpReqWithRetry(
-		"functions/"+name,
+		"function/"+name,
 		"POST",
 		[]byte{},
 		10,
-		100,
+		1000,
 		http.StatusOK,
 	)
 

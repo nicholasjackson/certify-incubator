@@ -45,6 +45,7 @@ func assertList(t *testing.T, count int) {
 
 	if len(fs) != count {
 		t.Logf("List functions got: %d, want: %d", len(fs), count)
+		t.Logf("%#v", fs)
 		t.Fail()
 	}
 }

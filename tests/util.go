@@ -37,7 +37,7 @@ func httpReqWithRetry(path, method string, payload []byte, retries, timeoutMS, o
 
 	var resp *http.Response
 	var body []byte
-	var errs error
+	errs := errors.New("")
 
 	err := r.Run(func() error {
 		var err error
@@ -48,19 +48,23 @@ func httpReqWithRetry(path, method string, payload []byte, retries, timeoutMS, o
 		)
 
 		if err != nil {
-			errs = errors.Wrap(errs, fmt.Sprintf("error executing request: %s", err))
+			errs = errors.Wrap(errs, fmt.Sprintf("error executing request: %s\n", err))
 			return errs
 		}
 
 		if resp.StatusCode != okStatus {
-			errs = errors.Wrap(errs, fmt.Sprintf("expected status %d, got %d", okStatus, resp.StatusCode))
+			errs = errors.Wrap(errs, fmt.Sprintf("expected status %d, got %d\n", okStatus, resp.StatusCode))
 			return errs
 		}
 
 		return nil
 	})
 
-	return body, resp, errors.Wrap(err, fmt.Sprintf("failed after %d attempts", retries))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, fmt.Sprintf("call function %s failed after %d attempts\n", os.Getenv("gateway_url")+path, retries))
+	}
+
+	return body, resp, nil
 }
 
 func httpReq(url1, method string, reader io.Reader) ([]byte, *http.Response, error) {
@@ -75,6 +79,7 @@ func httpReq(url1, method string, reader io.Reader) ([]byte, *http.Response, err
 	if callErr != nil {
 		return nil, nil, fmt.Errorf("call error %s ", callErr)
 	}
+
 	if res.Body != nil {
 		defer res.Body.Close()
 		bytesOut, err := ioutil.ReadAll(res.Body)
@@ -140,7 +145,7 @@ func listFunctions(t *testing.T) []requests.Function {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		t.Logf("got %d, wanted %d", res.StatusCode, http.StatusOK)
+		t.Logf("error getting functions got status %d, wanted %d", res.StatusCode, http.StatusOK)
 		t.Fail()
 		return nil
 	}
