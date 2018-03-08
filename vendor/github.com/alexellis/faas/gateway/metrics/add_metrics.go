@@ -7,9 +7,10 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 
-	"github.com/alexellis/faas/gateway/requests"
+	"github.com/openfaas/faas/gateway/requests"
 )
 
 func makeClient() http.Client {
@@ -18,10 +19,8 @@ func makeClient() http.Client {
 }
 
 // AddMetricsHandler wraps a http.HandlerFunc with Prometheus metrics
-func AddMetricsHandler(handler http.HandlerFunc, host string, port int) http.HandlerFunc {
-	client := makeClient()
+func AddMetricsHandler(handler http.HandlerFunc, prometheusQuery PrometheusQueryFetcher) http.HandlerFunc {
 
-	prometheusQuery := NewPrometheusQuery(host, port, &client)
 	return func(w http.ResponseWriter, r *http.Request) {
 		// log.Printf("Calling upstream for function info\n")
 
@@ -30,11 +29,14 @@ func AddMetricsHandler(handler http.HandlerFunc, host string, port int) http.Han
 		upstreamCall := recorder.Result()
 
 		if upstreamCall.Body == nil {
+			log.Println("Upstream call had empty body.")
 			return
 		}
+
 		defer upstreamCall.Body.Close()
 
 		if recorder.Code != http.StatusOK {
+			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("Error pulling metrics from provider/backend. Status code: %d", recorder.Code)))
 			return
@@ -44,21 +46,23 @@ func AddMetricsHandler(handler http.HandlerFunc, host string, port int) http.Han
 		var functions []requests.Function
 
 		err := json.Unmarshal(upstreamBody, &functions)
-		if err != nil {
-			log.Println(err)
 
+		if err != nil {
+			log.Printf("Metrics upstream error: %s", err)
+
+			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Error parsing metrics from upstream provider/backend."))
 			return
 		}
 
 		// log.Printf("Querying Prometheus API\n")
-		// `sum(gateway_function_invocation_total{function_name=~".*", code=~".*"}) by (function_name, code)`)
-		expr := "sum(gateway_function_invocation_total%7Bfunction_name%3D~%22.*%22%2C+code%3D~%22.*%22%7D)+by+(function_name%2C+code)"
+		expr := url.QueryEscape(`sum(gateway_function_invocation_total{function_name=~".*", code=~".*"}) by (function_name, code)`)
+		// expr := "sum(gateway_function_invocation_total%7Bfunction_name%3D~%22.*%22%2C+code%3D~%22.*%22%7D)+by+(function_name%2C+code)"
 		results, fetchErr := prometheusQuery.Fetch(expr)
 		if fetchErr != nil {
 			log.Printf("Error querying Prometheus API: %s\n", fetchErr.Error())
-
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write(upstreamBody)
 			return
@@ -73,6 +77,7 @@ func AddMetricsHandler(handler http.HandlerFunc, host string, port int) http.Han
 		}
 
 		// log.Printf("Writing bytesOut: %s\n", bytesOut)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(bytesOut)
 	}

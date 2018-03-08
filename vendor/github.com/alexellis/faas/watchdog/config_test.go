@@ -51,32 +51,19 @@ func TestRead_CgiHeaders_DefaultIsTrueConfig(t *testing.T) {
 	}
 }
 
-func TestRead_WriteDebug_DefaultIsTrueConfig(t *testing.T) {
+func TestRead_WriteDebug_DefaultIsFalseConfig(t *testing.T) {
 	defaults := NewEnvBucket()
 	readConfig := ReadConfig{}
-
-	config := readConfig.Read(defaults)
-
-	if config.writeDebug != true {
-		t.Logf("writeDebug should have been true (unspecified)")
-		t.Fail()
-	}
-}
-
-func TestRead_WriteDebug_FalseOverrideConfig(t *testing.T) {
-	defaults := NewEnvBucket()
-	readConfig := ReadConfig{}
-	defaults.Setenv("write_debug", "false")
 
 	config := readConfig.Read(defaults)
 
 	if config.writeDebug != false {
-		t.Logf("writeDebug should have been false (specified)")
+		t.Logf("writeDebug should have been false (unspecified)")
 		t.Fail()
 	}
 }
 
-func TestRead_WriteDebug_TrueConfig(t *testing.T) {
+func TestRead_WriteDebug_TrueOverrideConfig(t *testing.T) {
 	defaults := NewEnvBucket()
 	readConfig := ReadConfig{}
 	defaults.Setenv("write_debug", "true")
@@ -85,6 +72,19 @@ func TestRead_WriteDebug_TrueConfig(t *testing.T) {
 
 	if config.writeDebug != true {
 		t.Logf("writeDebug should have been true (specified)")
+		t.Fail()
+	}
+}
+
+func TestRead_WriteDebug_FlaseConfig(t *testing.T) {
+	defaults := NewEnvBucket()
+	readConfig := ReadConfig{}
+	defaults.Setenv("write_debug", "false")
+
+	config := readConfig.Read(defaults)
+
+	if config.writeDebug != false {
+		t.Logf("writeDebug should have been false (specified)")
 		t.Fail()
 	}
 }
@@ -162,16 +162,34 @@ func TestRead_ReadAndWriteTimeoutConfig(t *testing.T) {
 	}
 }
 
+func TestRead_ReadAndWriteTimeoutDurationConfig(t *testing.T) {
+	defaults := NewEnvBucket()
+	defaults.Setenv("read_timeout", "20s")
+	defaults.Setenv("write_timeout", "1m30s")
+
+	readConfig := ReadConfig{}
+	config := readConfig.Read(defaults)
+
+	if (config.readTimeout) != time.Duration(20)*time.Second {
+		t.Logf("readTimeout incorrect, got: %d\n", config.readTimeout)
+		t.Fail()
+	}
+	if (config.writeTimeout) != time.Duration(90)*time.Second {
+		t.Logf("writeTimeout incorrect, got: %d\n", config.writeTimeout)
+		t.Fail()
+	}
+}
+
 func TestRead_ExecTimeoutConfig(t *testing.T) {
 	defaults := NewEnvBucket()
-	defaults.Setenv("exec_timeout", "3")
+	defaults.Setenv("exec_timeout", "3s")
 
 	readConfig := ReadConfig{}
 	config := readConfig.Read(defaults)
 
 	want := time.Duration(3) * time.Second
 	if (config.execTimeout) != want {
-		t.Logf("readTimeout incorrect, got: %d - want: %s\n", config.execTimeout, want)
+		t.Logf("execTimeout incorrect, got: %d - want: %s\n", config.execTimeout, want)
 		t.Fail()
 	}
 }

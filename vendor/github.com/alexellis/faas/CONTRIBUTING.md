@@ -4,37 +4,49 @@
 
 Guidelines for contributing.
 
-**How can I get involved?**
+#### How can I get involved?
 
-First of all, we'd love to welcome you into the our Slack community where we chat, exchange ideas and ask questions. See below for how to join.
+First of all, we'd love to welcome you into our Slack community where we exchange ideas, ask questions and chat about OpenFaaS, Raspberry Pi and other cloud-native technology. (*See below for how to join*)
 
 We have a number of areas where we can accept contributions:
 
 * Write Golang code for the CLI, Gateway or other providers
-* Write for our front-end UI
+* Write for our front-end UI (JS, HTML, CSS)
+* Write sample functions in any language
 * Review pull requests
+* Test out new features or work-in-progress
+* Get involved in design reviews and technical proof-of-concepts (PoCs)
+* Help us release and package OpenFaaS including the helm chart, compose files, kubectl YAML, marketplaces and stores
 * Manage, triage and research Issues and Pull Requests
 * Help our growing community feel at home
-* Create docs, guides and blogging
+* Create docs, guides and write blogs
 * Speak at meet-ups, conferences or by helping folks with OpenFaaS on Slack
 
-**I've found a typo**
+This is just a short list of ideas, if you have other ideas for contributing please make a suggestion.
 
-* A Pull Request is not necessary. Raise an [Issue](https://github.com/alexellis/faas/issues) and we'll fix it as soon as we can. 
+#### I've found a typo
 
-**I have a [great] idea**
+* A Pull Request is not necessary. Raise an [Issue](https://github.com/openfaas/faas/issues) and we'll fix it as soon as we can. 
 
-The OpenFaaS maintainers would like to make OpenFaaS the best it can be and welcome new contributions that align with the project's goals. Our time is limited so we'd like to make sure we agree on the proposed work before you spend time doing it. Saying "no" is hard which is why we'd rather say "yes" ahead of time.
+#### I have a [great] idea
+
+The OpenFaaS maintainers would like to make OpenFaaS the best it can be and welcome new contributions that align with the project's goals. Our time is limited so we'd like to make sure we agree on the proposed work before you spend time doing it. Saying "no" is hard which is why we'd rather say "yes" ahead of time. You need to raise a proposal.
+
+**Please do not raise a proposal after doing the work - this is counter to the spirit of the project. It is hard to be objective about something which has already been done**
 
 What makes a good proposal?
 
 * Brief summary including motivation/context
 * Any design changes
 * Pros + Cons
-* Effort required
+* Effort required up front
+* Effort required for CI/CD, release, ongoing maintenance
+* Migration strategy / backwards-compatibility
 * Mock-up screenshots or examples of how the CLI would work
 
-**Paperwork for Pull Requests**
+If you are proposing a new tool or service please do due diligence. Does this tool already exist? Can we reuse it? For example: a timer / CRON-type scheduler for invoking functions. 
+
+#### Paperwork for Pull Requests
 
 Please read this whole guide and make sure you agree to our DCO agreement (included below):
 
@@ -42,7 +54,11 @@ Please read this whole guide and make sure you agree to our DCO agreement (inclu
 * Complete the whole template for issues and pull requests
 * [Reference addressed issues](https://help.github.com/articles/closing-issues-using-keywords/) in the PR description & commit messages - use 'Fixes #IssueNo' 
 * Always give instructions for testing
-* Give us CLI commands and output or screenshots where you can 
+* Provide us CLI commands and output or screenshots where you can 
+
+**Unit testing with Golang**
+
+Please follow style guide on [this blog post](https://blog.alexellis.io/golang-writing-unit-tests/) from [The Go Programming Language](https://www.amazon.co.uk/Programming-Language-Addison-Wesley-Professional-Computing/dp/0134190440)
 
 **I have a question, a suggestion or need help**
 
@@ -50,7 +66,10 @@ Please raise an Issue or email alex@openfaas.com for an invitation to our Slack 
 
 **I need to add a dependency**
 
-We are using the `vndr` tool across all projects. Get [started here](https://github.com/LK4D4/vndr).
+We use vendoring for projects written in Go. This means that we will maintain a copy of the source-code of dependencies within Git. It allows a repeatable build and isolates change. 
+
+* Legacy: `vndr` - https://github.com/LK4D4/vndr
+* New projects: `dep` - https://github.com/golang/dep
 
 **How do I become a maintainer?**
 
@@ -59,8 +78,13 @@ Maintainers are well-known contributors who help with:
 * Joining contributor meetings and supporting new contributors
 * Testing and reviewing pull requests
 * Offering other project support and strategical advice
+* Attending contributors' meetings
 
 Varying levels of write access are made available via our project bot [Derek](https://github.com/alexellis/derek) to help regular contributors transition to maintainers.
+
+**How do I work with Derek the bot?**
+
+If you have been added to the MAINTAINERS file in the root of an OpenFaaS repository then you can help us manage our community and contributions by issuing comments on Issues and Pull Requests. See [Derek](https://github.com/alexellis/derek) for available commands.
 
 **Governance**
 
@@ -72,11 +96,11 @@ This project is written in Golang but many of the community contributions so far
 
 #### Community file
 
-The [community.md](https://github.com/alexellis/faas/blob/master/community.md) file highlights blogs, talks and code repos with example FaaS functions and usages. Please send a Pull Request if you are doing something cool with FaaS.
+The [community.md](https://github.com/openfaas/faas/blob/master/community.md) file highlights blogs, talks and code repos with example FaaS functions and usages. Please send a Pull Request if you are doing something cool with FaaS.
 
 #### Roadmap
 
-Checkout the [roadmap](https://github.com/alexellis/faas/blob/master/ROADMAP.md) and [open issues](https://github.com/alexellis/faas/issues).
+Checkout the [roadmap](https://github.com/openfaas/faas/blob/master/ROADMAP.md) and [open issues](https://github.com/openfaas/faas/issues).
 
 #### Slack
 
@@ -88,7 +112,18 @@ Email: alex@openfaas.com - please send in a one-liner about yourself so we can g
 
 This project is licensed under the MIT License.
 
+#### Copyright notice
+
+Please add a Copyright notice to new files you add where this is not already present:
+
+```
+// Copyright (c) OpenFaaS Project 2017. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+```
+
 #### Sign your work
+
+> Note: all of the commits in your PR/Patch must be signed-off.
 
 The sign-off is a simple line at the end of the explanation for a patch. Your
 signature certifies that you wrote the patch or otherwise have the right to pass

@@ -1,7 +1,7 @@
 Watchdog
 ==========
 
-The watchdog provides an unmanaged and generic interface between the outside world and your function. Its job is to marshal a HTTP request accepted on the API Gateway and to invoke your chosen appliaction. The watchdog is a tiny Golang webserver - see the diagram below for how this process works.
+The watchdog provides an unmanaged and generic interface between the outside world and your function. Its job is to marshal a HTTP request accepted on the API Gateway and to invoke your chosen application. The watchdog is a tiny Golang webserver - see the diagram below for how this process works.
 
 ![](https://pbs.twimg.com/media/DGScDblUIAAo4H-.jpg:large)
 
@@ -17,7 +17,7 @@ The easiest way to create a function is to use a template and the FaaS CLI. The 
 
 * [Your first serverless Python function with OpenFaaS](https://blog.alexellis.io/first-faas-python-function/)
 
-* [Read a tutorial on the FaaS CLI](https://github.com/alexellis/faas-cli)
+* [Read a tutorial on the FaaS CLI](https://github.com/openfaas/faas-cli)
 
 ## Delve deeper
 
@@ -26,8 +26,8 @@ The easiest way to create a function is to use a template and the FaaS CLI. The 
 Here's how to package your function if you don't want to use the CLI or have existing binaries or images:
 
 - [x] Use an existing or a new Docker image as base image `FROM`
-- [x] Add the fwatchdog binary from the [Releases page](https://github.com/alexellis/faas/releases) via `curl` or `ADD https://`
-- [x] Set an `fprocess` environmental variable with the function you want to run for each request
+- [x] Add the fwatchdog binary from the [Releases page](https://github.com/openfaas/faas/releases) via `curl` or `ADD https://`
+- [x] Set an `fprocess` (function process) environmental variable with the function you want to run for each request
 - [x] Expose port 8080
 - [x] Set the `CMD` to `fwatchdog`
 
@@ -36,10 +36,10 @@ Example Dockerfile for an `echo` function:
 ```
 FROM alpine:3.5
 
-ADD https://github.com/alexellis/faas/releases/download/v0.5-alpha/fwatchdog /usr/bin
+ADD https://github.com/openfaas/faas/releases/download/0.7.1/fwatchdog /usr/bin
 RUN chmod +x /usr/bin/fwatchdog
 
-# Define your UNIX binary here
+# Define your binary here
 ENV fprocess="/bin/cat"
 
 CMD ["fwatchdog"]
@@ -71,26 +71,42 @@ The watchdog can be configured through environmental variables. You must always 
 
 | Option                 | Usage             |
 |------------------------|--------------|
-| `fprocess`             | The process to invoke for each function call. This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
+| `fprocess`             | The process to invoke for each function call (function process). This must be a UNIX binary and accept input via STDIN and output via STDOUT.  |
 | `cgi_headers`          | HTTP headers from request are made available through environmental variables - `Http_X_Served_By` etc. See section: *Handling headers* for more detail. Enabled by default. |
-| `marshal_requests`     | Instead of re-directing the raw HTTP body into your fprocess, it will first be marshalled into JSON. Use this if you need to work with HTTP headers and do not want to use environmental variables via the `cgi_headers` flag. |
+| `marshal_request`     | Instead of re-directing the raw HTTP body into your fprocess, it will first be marshalled into JSON. Use this if you need to work with HTTP headers and do not want to use environmental variables via the `cgi_headers` flag. |
 | `content_type`         | Force a specific Content-Type response for all responses. |
 | `write_timeout`        | HTTP timeout for writing a response body from your function (in seconds)  |
 | `read_timeout`         | HTTP timeout for reading the payload from the client caller (in seconds) |
 | `suppress_lock`        | The watchdog will attempt to write a lockfile to /tmp/ for swarm healthchecks - set this to true to disable behaviour. |
 | `exec_timeout`         | Hard timeout for process exec'd for each incoming request (in seconds). Disabled if set to 0. |
+| `write_debug`          | Write all output, error messages, and additional information to the logs. Default is false. |
  
 
 ## Advanced / tuning
 
-**Working with HTTP headers**
+### of-watchdog and AfterBurn
+
+* of-watchdog
+
+A new version of the watchdog is being tested over at [openfaas-incubator/of-watchdog](https://github.com/openfaas-incubator/of-watchdog).
+
+This re-write is mainly structural for on-going maintenance. It will be a drop-in replacement for the existing watchdog and also has binary releases available.
+
+* AfterBurn Optimizations
+
+Forking a new process per request has many advantages for isolation, simplicity and means any process can be a function without any additional code. AfterBurn is an optimization which maintains one single process between all requests and means a Java function can execute a round-trip in as little as 10-12ms without further tuning. It relies on a simple client library maintained by this project for each runtime language.
+
+You can read about [AfterBurn](https://blog.alexellis.io/openfaas-serverless-acceleration/) on my blog. It is supported by the of-watchdog and a version is also available for the existing watchdog in [PR #224](https://github.com/openfaas/faas/pull/224).
+
+### Working with HTTP headers
 
 Headers and other request information are injected into environmental variables in the following format:
 
 The `X-Forwarded-By` header becomes available as `Http_X_Forwarded_By`
 
 * `Http_Method` - GET/POST etc
-* `Http_Query` - Querystring value
+* `Http_Query` - QueryString value
+* `Http_ContentLength` - gives the total content-length of the incoming HTTP request received by the watchdog.
 
 > This behaviour is enabled by the `cgi_headers` environmental variable which is enabled by default.
 
@@ -130,7 +146,7 @@ Http_Query=action=quote&qty=1&productId=105
 
 You can now use HTTP state from within your application to make decisions.
 
-**HTTP methods**
+### HTTP methods
 
 The HTTP methods supported for the watchdog are:
 
@@ -142,7 +158,7 @@ Without a body:
 
 > The API Gateway currently supports the POST route for functions.
 
-**Content-Type of request/response**
+### Content-Type of request/response
 
 By default the watchdog will match the response of your function to the "Content-Type" of the client.
 
@@ -151,11 +167,16 @@ By default the watchdog will match the response of your function to the "Content
 
 To override the Content-Type of all your responses set the `content_type` environmental variable.
 
-**I don't want to use the watchdog**
+### I don't want to use the watchdog
 
-This is an unsupported use-case for the OpenFaaS project however if your container exposes HTTP POST on port 8080 then the OpenFaaS API gateway and other tooling will manage your container.
+This is an unsupported use-case for the OpenFaaS project however if your container conforms to the requirements below then the OpenFaaS API gateway and other tooling will manage and scale your service.
 
-**Tuning auto-scaling**
+You will need to provide a lock-file at `/tmp/.lock` so that the orchestration system can run healthchecks on your container. If you are using Docker Swarm make sure you provide a `HEALTHCHECK` instruction in your Dockerfile - samples are given in the `faas` repository.
+
+* Expose TCP port 8080 over HTTP
+* Create `/tmp/.lock` or in whatever location responds to the OS tempdir syscall
+
+### Tuning auto-scaling
 
 Auto-scaling starts at 1 replica and steps up in blocks of 5:
 
@@ -164,10 +185,19 @@ Auto-scaling starts at 1 replica and steps up in blocks of 5:
 * 10->15
 * 15->20
 
-You can override the upper limit of auto-scaling by setting the following label on your container:
+You can override the minimum and maximum scale of a function through labels.
+
+Add these labels to the deployment if you want to sacle between 2 and 15 replicas.
 
 ```
-com.faas.max_replicas: "10"
+com.openfaas.scale.min: "2"
+com.openfaas.scale.max: "15"
 ```
 
-If you want to disable scaling, set the `com.faas.max_replicas` value to `"1"`.
+The labels are optional.
+
+**Disabling auto-scaling**
+
+If you want to disable auto-scaling for a function then set the minimum and maximum scale to the same value i.e. "1".
+
+As an alternative you can also remove AlertManager or scale it to 0 replicas.

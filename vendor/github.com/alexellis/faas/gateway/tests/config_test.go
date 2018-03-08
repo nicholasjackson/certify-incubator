@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexellis/faas/gateway/types"
+	"github.com/openfaas/faas/gateway/types"
 )
 
 type EnvBucket struct {
@@ -69,6 +69,24 @@ func TestRead_ReadAndWriteTimeoutConfig(t *testing.T) {
 		t.Fail()
 	}
 	if (config.WriteTimeout) != time.Duration(60)*time.Second {
+		t.Logf("WriteTimeout incorrect, got: %d\n", config.WriteTimeout)
+		t.Fail()
+	}
+}
+
+func TestRead_ReadAndWriteTimeoutDurationConfig(t *testing.T) {
+	defaults := NewEnvBucket()
+	defaults.Setenv("read_timeout", "20s")
+	defaults.Setenv("write_timeout", "1m30s")
+
+	readConfig := types.ReadConfig{}
+	config := readConfig.Read(defaults)
+
+	if (config.ReadTimeout) != time.Duration(20)*time.Second {
+		t.Logf("ReadTimeout incorrect, got: %d\n", config.ReadTimeout)
+		t.Fail()
+	}
+	if (config.WriteTimeout) != time.Duration(90)*time.Second {
 		t.Logf("WriteTimeout incorrect, got: %d\n", config.WriteTimeout)
 		t.Fail()
 	}

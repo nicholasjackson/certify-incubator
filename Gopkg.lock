@@ -4,7 +4,8 @@
 [[projects]]
   name = "github.com/alexellis/faas"
   packages = ["gateway/requests"]
-  revision = "00686d0380633b2bc3a051ecb74a8c9884370708"
+  revision = "76526b0be3eb2fb71f2fcb115870e7623bc54969"
+  version = "0.7.4"
 
 [[projects]]
   name = "github.com/eapache/go-resiliency"
@@ -15,8 +16,8 @@
 [[projects]]
   name = "github.com/openfaas/faas"
   packages = ["gateway/requests"]
-  revision = "5f30c7570f67dd7ec71d30f31cab6fc9644f0e79"
-  version = "0.6.15"
+  revision = "76526b0be3eb2fb71f2fcb115870e7623bc54969"
+  version = "0.7.4"
 
 [[projects]]
   name = "github.com/pkg/errors"

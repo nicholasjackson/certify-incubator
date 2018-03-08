@@ -4,44 +4,21 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"time"
 
-	"fmt"
-
-	"github.com/Sirupsen/logrus"
-	natsHandler "github.com/alexellis/faas-nats/handler"
-	internalHandlers "github.com/alexellis/faas/gateway/handlers"
-	"github.com/alexellis/faas/gateway/metrics"
-	"github.com/alexellis/faas/gateway/plugin"
-	"github.com/alexellis/faas/gateway/types"
-	"github.com/docker/docker/client"
-
 	"github.com/gorilla/mux"
+
+	internalHandlers "github.com/openfaas/faas/gateway/handlers"
+	"github.com/openfaas/faas/gateway/metrics"
+	"github.com/openfaas/faas/gateway/plugin"
+	"github.com/openfaas/faas/gateway/types"
+	natsHandler "github.com/openfaas/nats-queue-worker/handler"
 )
 
-type handlerSet struct {
-	Proxy          http.HandlerFunc
-	DeployFunction http.HandlerFunc
-	DeleteFunction http.HandlerFunc
-	ListFunctions  http.HandlerFunc
-	Alert          http.HandlerFunc
-	RoutelessProxy http.HandlerFunc
-	UpdateFunction http.HandlerFunc
-
-	// QueuedProxy - queue work and return synchronous response
-	QueuedProxy http.HandlerFunc
-
-	// AsyncReport - report a deferred execution result
-	AsyncReport http.HandlerFunc
-}
-
 func main() {
-	logger := logrus.Logger{}
-	logrus.SetFormatter(&logrus.TextFormatter{})
 
 	osEnv := types.OsEnv{}
 	readConfig := types.ReadConfig{}
@@ -50,62 +27,34 @@ func main() {
 	log.Printf("HTTP Read Timeout: %s", config.ReadTimeout)
 	log.Printf("HTTP Write Timeout: %s", config.WriteTimeout)
 
-	var dockerClient *client.Client
-
-	if config.UseExternalProvider() {
-		log.Printf("Binding to external function provider: %s", config.FunctionsProviderURL)
-	} else {
-		var err error
-		dockerClient, err = client.NewEnvClient()
-		if err != nil {
-			log.Fatal("Error with Docker client.")
-		}
-		dockerVersion, err := dockerClient.ServerVersion(context.Background())
-		if err != nil {
-			log.Fatal("Error with Docker server.\n", err)
-		}
-		log.Printf("Docker API version: %s, %s\n", dockerVersion.APIVersion, dockerVersion.Version)
+	if !config.UseExternalProvider() {
+		log.Fatalln("As of this version of OpenFaaS, you must use external provider even for Docker Swarm.")
 	}
+
+	log.Printf("Binding to external function provider: %s", config.FunctionsProviderURL)
 
 	metricsOptions := metrics.BuildMetricsOptions()
 	metrics.RegisterMetrics(metricsOptions)
 
-	var faasHandlers handlerSet
+	var faasHandlers types.HandlerSet
 
-	if config.UseExternalProvider() {
+	servicePollInterval := time.Second * 5
 
-		reverseProxy := httputil.NewSingleHostReverseProxy(config.FunctionsProviderURL)
+	reverseProxy := types.NewHTTPClientReverseProxy(config.FunctionsProviderURL, config.ReadTimeout)
 
-		faasHandlers.Proxy = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
-		faasHandlers.RoutelessProxy = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
-		faasHandlers.ListFunctions = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
-		faasHandlers.DeployFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
-		faasHandlers.DeleteFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
-		faasHandlers.UpdateFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.Proxy = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.RoutelessProxy = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.ListFunctions = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.DeployFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.DeleteFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
+	faasHandlers.UpdateFunction = internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
 
-		alertHandler := plugin.NewExternalServiceQuery(*config.FunctionsProviderURL)
-		faasHandlers.Alert = internalHandlers.MakeAlertHandler(alertHandler)
+	queryFunction := internalHandlers.MakeForwardingProxyHandler(reverseProxy, &metricsOptions)
 
-		metrics.AttachExternalWatcher(*config.FunctionsProviderURL, metricsOptions, "func", time.Second*5)
+	alertHandler := plugin.NewExternalServiceQuery(*config.FunctionsProviderURL)
+	faasHandlers.Alert = internalHandlers.MakeAlertHandler(alertHandler)
 
-	} else {
-
-		// How many times to reschedule a function.
-		maxRestarts := uint64(5)
-
-		faasHandlers.Proxy = internalHandlers.MakeProxy(metricsOptions, true, dockerClient, &logger)
-		faasHandlers.RoutelessProxy = internalHandlers.MakeProxy(metricsOptions, false, dockerClient, &logger)
-		faasHandlers.ListFunctions = internalHandlers.MakeFunctionReader(metricsOptions, dockerClient)
-		faasHandlers.DeployFunction = internalHandlers.MakeNewFunctionHandler(metricsOptions, dockerClient, maxRestarts)
-		faasHandlers.DeleteFunction = internalHandlers.MakeDeleteFunctionHandler(metricsOptions, dockerClient)
-		faasHandlers.UpdateFunction = internalHandlers.MakeUpdateFunctionHandler(metricsOptions, dockerClient, maxRestarts)
-
-		faasHandlers.Alert = internalHandlers.MakeAlertHandler(internalHandlers.NewSwarmServiceQuery(dockerClient))
-
-		// This could exist in a separate process - records the replicas of each swarm service.
-		functionLabel := "function"
-		metrics.AttachSwarmWatcher(dockerClient, metricsOptions, functionLabel)
-	}
+	metrics.AttachExternalWatcher(*config.FunctionsProviderURL, metricsOptions, "func", servicePollInterval)
 
 	if config.UseNATS() {
 		log.Println("Async enabled: Using NATS Streaming.")
@@ -114,12 +63,13 @@ func main() {
 			log.Fatalln(queueErr)
 		}
 
-		faasHandlers.QueuedProxy = internalHandlers.MakeQueuedProxy(metricsOptions, true, &logger, natsQueue)
+		faasHandlers.QueuedProxy = internalHandlers.MakeQueuedProxy(metricsOptions, true, natsQueue)
 		faasHandlers.AsyncReport = internalHandlers.MakeAsyncReport(metricsOptions)
 	}
 
-	listFunctions := metrics.AddMetricsHandler(faasHandlers.ListFunctions, config.PrometheusHost, config.PrometheusPort)
-
+	prometheusQuery := metrics.NewPrometheusQuery(config.PrometheusHost, config.PrometheusPort, &http.Client{})
+	listFunctions := metrics.AddMetricsHandler(faasHandlers.ListFunctions, prometheusQuery)
+	faasHandlers.Proxy = internalHandlers.MakeCallIDMiddleware(faasHandlers.Proxy)
 	r := mux.NewRouter()
 
 	// r.StrictSlash(false)	// This didn't work, so register routes twice.
@@ -127,10 +77,12 @@ func main() {
 	r.HandleFunc("/function/{name:[-a-zA-Z_0-9]+}/", faasHandlers.Proxy)
 
 	r.HandleFunc("/system/alert", faasHandlers.Alert)
+
+	r.HandleFunc("/system/function/{name:[-a-zA-Z_0-9]+}", queryFunction).Methods("GET")
 	r.HandleFunc("/system/functions", listFunctions).Methods("GET")
 	r.HandleFunc("/system/functions", faasHandlers.DeployFunction).Methods("POST")
 	r.HandleFunc("/system/functions", faasHandlers.DeleteFunction).Methods("DELETE")
-	r.HandleFunc("/system/functions", faasHandlers.UpdateFunction).Methods("UPDATE")
+	r.HandleFunc("/system/functions", faasHandlers.UpdateFunction).Methods("PUT")
 
 	if faasHandlers.QueuedProxy != nil {
 		r.HandleFunc("/async-function/{name:[-a-zA-Z_0-9]+}/", faasHandlers.QueuedProxy).Methods("POST")
@@ -140,7 +92,12 @@ func main() {
 	}
 
 	fs := http.FileServer(http.Dir("./assets/"))
-	r.PathPrefix("/ui/").Handler(http.StripPrefix("/ui", fs)).Methods("GET")
+
+	// This URL allows access from the UI to the OpenFaaS store
+	allowedCORSHost := "raw.githubusercontent.com"
+	fsCORS := internalHandlers.DecorateWithCORS(fs, allowedCORSHost)
+
+	r.PathPrefix("/ui/").Handler(http.StripPrefix("/ui", fsCORS)).Methods("GET")
 
 	r.HandleFunc("/", faasHandlers.RoutelessProxy).Methods("POST")
 
