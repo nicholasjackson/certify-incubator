@@ -36,7 +36,7 @@ func assertInvoke(t *testing.T, name string, expected string) {
 		"function/"+name,
 		"POST",
 		[]byte{},
-		10,
+		100,
 		1000,
 		http.StatusOK,
 	)

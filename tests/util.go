@@ -31,7 +31,7 @@ func makeReader(input interface{}) *bytes.Buffer {
 // httpReqWithRetry makes a http request n number of times until success code is matched or retry count exceeded
 func httpReqWithRetry(path, method string, payload []byte, retries, timeoutMS, okStatus int) ([]byte, *http.Response, error) {
 	r := retrier.New(
-		retrier.ExponentialBackoff(retries, time.Duration(timeoutMS)*time.Millisecond),
+		retrier.ConstantBackoff(retries, time.Duration(timeoutMS)*time.Millisecond),
 		nil,
 	)
 
@@ -156,6 +156,31 @@ func listFunctions(t *testing.T) []requests.Function {
 		t.Log(err)
 		t.Fail()
 		return nil
+	}
+
+	return fs
+}
+
+func listFunctionDetail(t *testing.T, name string) requests.Function {
+	bytesOut, res, err := httpReq(os.Getenv("gateway_url")+"system/function/"+name, "GET", nil)
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+		return requests.Function{}
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Logf("error getting functions got status %d, wanted %d", res.StatusCode, http.StatusOK)
+		t.Fail()
+		return requests.Function{}
+	}
+
+	fs := requests.Function{}
+	err = json.Unmarshal(bytesOut, &fs)
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+		return requests.Function{}
 	}
 
 	return fs

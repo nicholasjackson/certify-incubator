@@ -55,7 +55,7 @@ func sendScaleRequest(t *testing.T) {
 func assertScale(t *testing.T) {
 	// retry until the replicas have been created, this can take variable time based on the machine performance
 	r := retrier.New(
-		retrier.ExponentialBackoff(30, 1000*time.Millisecond),
+		retrier.ConstantBackoff(30, 1000*time.Millisecond),
 		nil,
 	)
 
@@ -63,22 +63,25 @@ func assertScale(t *testing.T) {
 
 	err := r.Run(func() error {
 
-		fs := listFunctions(t)
+		fs := listFunctionDetail(t, "scaletest")
 
-		if fs == nil {
-			t.Fatal("no functions running")
-		}
-
-		if fs[0].Replicas != 5 {
-			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 instances got %d", fs[0].Replicas))
+		fmt.Println("Test")
+		if fs.Name == "" {
+			errs = errors.Wrap(errs, "no functions running\n")
 			return errs
 		}
 
-		if fs[0].AvailableReplicas != 5 {
-			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 available replicas got %d", fs[0].AvailableReplicas))
+		if fs.Replicas != 5 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 instances got %d\n", fs.Replicas))
 			return errs
 		}
 
+		if fs.AvailableReplicas != 5 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 available replicas got %d\n", fs.AvailableReplicas))
+			return errs
+		}
+
+		fmt.Println("Pass")
 		return nil
 	})
 
