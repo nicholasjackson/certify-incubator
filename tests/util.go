@@ -31,7 +31,7 @@ func makeReader(input interface{}) *bytes.Buffer {
 // httpReqWithRetry makes a http request n number of times until success code is matched or retry count exceeded
 func httpReqWithRetry(path, method string, payload []byte, retries, timeoutMS, okStatus int) ([]byte, *http.Response, error) {
 	r := retrier.New(
-		retrier.ConstantBackoff(retries, time.Duration(timeoutMS)*time.Millisecond),
+		retrier.ExponentialBackoff(retries, time.Duration(timeoutMS)*time.Millisecond),
 		nil,
 	)
 

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ func randomTestRun(t *testing.T, tests []func(t *testing.T)) {
 	shuffle(tests)
 
 	for _, test := range tests {
+		fmt.Println("Running Test")
 		test(t)
 	}
 }

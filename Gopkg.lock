@@ -2,32 +2,45 @@
 
 
 [[projects]]
+  digest = "1:a968dbc9012797bfbe091d4f277be195e978636c1386116a3d6a141d9476665a"
   name = "github.com/alexellis/faas"
   packages = ["gateway/requests"]
-  revision = "76526b0be3eb2fb71f2fcb115870e7623bc54969"
-  version = "0.7.4"
+  pruneopts = ""
+  revision = "9c2f6dd2a4e2aac0b253b29cc031865b76802ed5"
+  version = "0.9.0"
 
 [[projects]]
+  digest = "1:6d6672f85a84411509885eaa32f597577873de00e30729b9bb0eb1e1faa49c12"
   name = "github.com/eapache/go-resiliency"
   packages = ["retrier"]
-  revision = "6800482f2c813e689c88b7ed3282262385011890"
-  version = "v1.0.0"
+  pruneopts = ""
+  revision = "ea41b0fad31007accc7f806884dcdf3da98b79ce"
+  version = "v1.1.0"
 
 [[projects]]
+  digest = "1:df1228c90e563a1af4f37f6c412c67e73f2fdfe38533ee7f019c4a9503a94799"
   name = "github.com/openfaas/faas"
   packages = ["gateway/requests"]
-  revision = "76526b0be3eb2fb71f2fcb115870e7623bc54969"
-  version = "0.7.4"
+  pruneopts = ""
+  revision = "5644d6ab2003b4088992729ab45793240debda91"
+  version = "0.7.9"
 
 [[projects]]
+  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = ""
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "79d57f65dfe6542233a431995427bd19e0cfa1b234cbf11c59d4aafe5a72071e"
+  input-imports = [
+    "github.com/alexellis/faas/gateway/requests",
+    "github.com/eapache/go-resiliency/retrier",
+    "github.com/openfaas/faas/gateway/requests",
+    "github.com/pkg/errors",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

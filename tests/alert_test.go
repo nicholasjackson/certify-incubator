@@ -1,10 +1,14 @@
 package tests
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/eapache/go-resiliency/retrier"
 	"github.com/openfaas/faas/gateway/requests"
+	"github.com/pkg/errors"
 )
 
 func alerts(t *testing.T) {
@@ -49,15 +53,37 @@ func sendScaleRequest(t *testing.T) {
 }
 
 func assertScale(t *testing.T) {
-	fs := listFunctions(t)
+	// retry until the replicas have been created, this can take variable time based on the machine performance
+	r := retrier.New(
+		retrier.ExponentialBackoff(30, 1000*time.Millisecond),
+		nil,
+	)
 
-	if fs == nil {
-		t.Fatal("no functions running")
-	}
+	errs := errors.New("")
 
-	if fs[0].Replicas != 5 {
-		t.Logf("Expected function to have 2 instances got %d", fs[0].Replicas)
-		t.Fail()
+	err := r.Run(func() error {
+
+		fs := listFunctions(t)
+
+		if fs == nil {
+			t.Fatal("no functions running")
+		}
+
+		if fs[0].Replicas != 5 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 instances got %d", fs[0].Replicas))
+			return errs
+		}
+
+		if fs[0].AvailableReplicas != 5 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 available replicas got %d", fs[0].AvailableReplicas))
+			return errs
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
