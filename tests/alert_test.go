@@ -42,7 +42,7 @@ func sendScaleRequest(t *testing.T) {
 		"system/alert",
 		"POST",
 		[]byte(scalePayload),
-		5,
+		4,
 		100,
 		http.StatusOK,
 	)
@@ -65,23 +65,21 @@ func assertScale(t *testing.T) {
 
 		fs := listFunctionDetail(t, "scaletest")
 
-		fmt.Println("Test")
 		if fs.Name == "" {
 			errs = errors.Wrap(errs, "no functions running\n")
 			return errs
 		}
 
-		if fs.Replicas != 5 {
-			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 instances got %d\n", fs.Replicas))
+		if fs.Replicas != 4 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 4 instances got %d\n", fs.Replicas))
 			return errs
 		}
 
-		if fs.AvailableReplicas != 5 {
-			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 5 available replicas got %d\n", fs.AvailableReplicas))
+		if fs.AvailableReplicas != 4 {
+			errs = errors.Wrap(errs, fmt.Sprintf("Expected function to have 4 available replicas got %d\n", fs.AvailableReplicas))
 			return errs
 		}
 
-		fmt.Println("Pass")
 		return nil
 	})
 

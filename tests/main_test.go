@@ -14,6 +14,7 @@ func Test_Certify(t *testing.T) {
 		invoke,
 		delete,
 		alerts,
+		info,
 	})
 }
 
